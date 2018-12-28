@@ -28,7 +28,7 @@ String [] Alphabet = {
   "2211"// Z
 };
 String saying = "|";//starts as blinker
-String said = "Password:"; //what's been translated
+String said = "*"; //what's been translated
 int currentLetter = 0; //currently active signals, adds on 1s and 2s from dits or dahs
 
 
@@ -62,8 +62,11 @@ void setup(){
   
 }
 void draw(){ 
-  background(0);
+  background(225,90,70);
   int currentFrame = frameCount;
+  
+  displayPreviousDots(currentLetter);
+  displayText(currentFrame);
   
   if(currentSignalPending){//if we're in a middle of a dignal, the sound should play
     float elapsedFrames = frameCount - signalStartFrame+1;
@@ -72,15 +75,11 @@ void draw(){
   }else{
     checkPause(currentFrame);
   }
-  
-  displayPreviousDots(currentLetter);
-  fill(255);
-  displayText(currentFrame);
 }
 void checkPause(int currentFrame){
   int pauseTime = currentFrame - signalEndFrame;
   String ending = said.substring(said.length()-1);
-  boolean endingSpace = ending.contains("_");
+  boolean endingSpace = ending.contains("_") || ending.contains("*");
   if (currentLetter > 0 && pauseTime > 60 && translateable(currentLetter)){
         said = said + translateMorse(currentLetter);
         saying = "|";
@@ -98,7 +97,7 @@ void displayCurrentDot(float elapsedFrames){
   float sizeOfDot = 0.08*width;
      strokeCap(ROUND);
      strokeWeight(sizeOfDot);
-     stroke(255);
+     stroke(193, 255, 239);
      //float lengthOfSignal = pow(elapsedFrames, 1/4)/2;
      float lengthOfSignal = constrain(pow(1.5*(float) Math.cbrt(elapsedFrames-5), 4), 0,width*0.055);
      line(width/2-lengthOfSignal, height/2, width/2+lengthOfSignal,height/2);
@@ -109,7 +108,7 @@ void displayPreviousDots(int signal){
   float startX = width/2;
   for (int i = 0; i < totalCount; i++){
     int ditOrDah = digitAtIndex(signal, i);
-    stroke(255, 60);
+    stroke(255, 151, 104);
     if (ditOrDah == 1){
       line(startX-0.5, height/2, startX+0.5,height/2);
       startX -= width*0.135+1;
@@ -120,7 +119,10 @@ void displayPreviousDots(int signal){
   }
 }
 void displayText(int currentFrame){
+  fill(255);
   text(said, 20,20,width,height);
+  
+  fill(255,170,120);
   if(currentFrame%50 < 20){//blinker
      text(saying,said.length()*27+20,20,width, height);
   }
@@ -189,7 +191,7 @@ Boolean translateable(int signals){
   return false;
 }
 String translateMorse(int signals){//given number, return corresponding letter
-  String what = "?";
+  String what = "_";
   String temporarySignal = nf(signals,4);
   for(int i = 0; i < Alphabet.length; i++){
     String compareLetter = Alphabet[i];
