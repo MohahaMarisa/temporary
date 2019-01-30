@@ -1,4 +1,25 @@
-//hello world = 1111 1 1211 1211 222 - 122 222 121 1211 211
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+This program relies on a pison device with exec running in the background to work. DeviceData get's input from exec
+and calls the approriate finger up and finger down functions here.
+
+This is a demo of inputting finger movement for morse signals. It takes in the finger input, and determines based
+off time elapsed and how it compares to a running average of expected time amounts, whether the user has inputted
+a 'dit' (the short signal in morse) or a 'Daaaaah' (the long signal). Based off a unique combination of dits and
+dahs this program translates that into the string equivalent
+
+It does so by adding either digits 1 or 2 to a currentLetter counter, which get's converted into a string and
+compared to the String [] Alphabet to see if there's a match. The match's index value determines the ascii value
+of the approriate character.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+/*How to test:
+Try it out with hello world in dits and dahs:
+1. Run this program by pressing play
+2. Notice the black screen? 'Wake' it up by pointing and holding up the index finger until black fades away
+3. Begin tapping in morse code with your index finger! 
+    drop finger quickly for a 'dit' (1), hold a little longer for a 'dah' (2)
+    Try with "hello world"
+    hello world = 1111 1 1211 1211 222 (pause and eventually a space will be added) 122 222 121 1211 211
+*/
 String [] Alphabet = {
   "0012",//A
   "2111",//B
@@ -61,7 +82,7 @@ void setup(){
   // The font ttf file must be located in the sketch's "data" directory to load successfully
   mono = createFont("RubikMonoOne-Regular.ttf", 32);
   textFont(mono);
-  /* for sound effects */  
+  /* for sound effects, initiate a sin oscillator from the sound library */ 
   sine = new SinOsc(this);
   sine.freq(sinFreq);
   
@@ -76,20 +97,21 @@ void draw(){
   
   if(activated){
     background(255,90,70);
-  int currentFrame = frameCount;
+    int currentFrame = frameCount;
   
-  displayPreviousDots(currentLetter);
-  displayText(currentFrame);
+    displayPreviousDots(currentLetter);
+    displayText(currentFrame);
   
-  if(currentSignalPending){//if we're in a middle of a dignal, the sound should play
-    float elapsedFrames = frameCount - signalStartFrame+1;
-    soundEffect(signalStartFrame, elapsedFrames);
-    displayCurrentDot(elapsedFrames);
-  }else{
-    checkPause(currentFrame);
-  }
+    if(currentSignalPending){//if we're in a middle of a signal, the sound should play
+      float elapsedFrames = frameCount - signalStartFrame+1;
+      soundEffect(signalStartFrame, elapsedFrames);// pitch is determined by how long input is (the longer the lower)
+      displayCurrentDot(elapsedFrames);
+    }else{//otherwise interpret the silence as either time to translate, or time to add a 'space'
+      checkPause(currentFrame);
+    }
   }
 }
+
 void activation(){
   activationFrames +=1;
   if(activationFrames > 130){
@@ -97,6 +119,8 @@ void activation(){
   }
   
 }
+
+//was the time pausing between signals long enough to be considered a space? Can we translate it?
 void checkPause(int currentFrame){
   int pauseTime = currentFrame - signalEndFrame;
   String ending = said.substring(said.length()-1);
@@ -114,6 +138,7 @@ void checkPause(int currentFrame){
       currentLetter = 0;
   }
 }
+// Visual effects for the currently not yet translated combination of dits and dahs
 void displayCurrentDot(float elapsedFrames){
   float sizeOfDot = 0.08*width;
      strokeCap(ROUND);
@@ -153,7 +178,15 @@ void soundEffect(int startFrame, float elapsedFrames){
   sine.amp(0.8);
   sine.freq(newFreq);
 }
-void fingerPressed(){
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+These are the functions that recieve user input 
+(key point is that bringing the finger down after lifting is the equivalent of pressing down on the mouse
+While I think this has the potential to give more tactile feedback, (imagine pressing your index to your thumb 
+and on contact, the sound plays) it isn't as reliable as the reverse tapping (lifting for input, vs relaxing)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+void fingerDown(){
   currentSignalPending = true;
   sine.play();
   
@@ -215,6 +248,12 @@ void mouseReleased() {
   }
   saying = translateMorse(currentLetter);
 }
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+These are the functions that have to do with translating morse signals. If the signal processing coming from 
+the device can't be improved, then implementing lanugage based probability here could help (much like the methods
+used in autocorrect or android's speed no-lift keyboard)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 Boolean possibleToContinue(int signals){//figures out what the ditdwh combo could possibly be..if it is at all
 //if we add more to this combo, does it still have potential as a letter

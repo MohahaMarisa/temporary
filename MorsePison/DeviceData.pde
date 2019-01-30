@@ -47,7 +47,7 @@ void parseData() {
   }else{
     print("tapping ");
     if(!currentSignalPending && activated){
-      fingerPressed();
+      fingerDown();
     }
   }
   }catch (Exception e)

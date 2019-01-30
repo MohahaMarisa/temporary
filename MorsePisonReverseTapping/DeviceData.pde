@@ -42,7 +42,7 @@ void parseData() {
     if(!activated){
       activation();
     }else if (!currentSignalPending){
-      fingerPressed();
+      fingerUp();
     }
   }else{
     print("relax");
@@ -50,7 +50,7 @@ void parseData() {
       activated = true;
     }
     if(currentSignalPending && activated){
-      fingerUp();
+      fingerDown();
     }
   }
   }catch (Exception e)

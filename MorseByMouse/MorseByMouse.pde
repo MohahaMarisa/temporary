@@ -1,10 +1,7 @@
 /*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-This program relies on a pison device with exec running in the background to work. DeviceData get's input from exec
-and calls the approriate finger up and finger down functions here.
-
-This is a demo of inputting finger movement for morse signals. It takes in the finger input, and determines based
-off time elapsed and how it compares to a running average of expected time amounts, whether the user has inputted
+This program is a morse code translator. It takes in mouse input as signals. 
+It determines based off time elapsed and how it compares to a running average of expected time amounts, whether the user has inputted
 a 'dit' (the short signal in morse) or a 'Daaaaah' (the long signal). Based off a unique combination of dits and
 dahs this program translates that into the string equivalent
 
@@ -17,9 +14,8 @@ of the approriate character.
 /*How to test:
 Try it out with hello world in dits and dahs:
 1. Run this program by pressing play
-2. Notice the black screen? 'Wake' it up by pointing and holding up the index finger until black fades away
-3. Begin tapping in morse code with your index finger! 
-    Lift quickly for a 'dit' (1), hold a little longer for a 'dah' (2)
+2. Begin tapping in morse code with your mouse! 
+    click  a 'dit' (1), press and hold a little longer for a 'dah' (2)
     Try with "hello world"
     hello world = 1111 1 1211 1211 222 (pause and eventually a space will be added) 122 222 121 1211 211
 */
@@ -52,7 +48,7 @@ String [] Alphabet = {
   "2211"// Z
 };
 String saying = "|";//this is what displays what you're currently trying to type, starts as a blinker
-String said = "*"; //what's been translated
+String said = "*"; //this shows what has been translated so far. Arbitraryily starts off as a "*"
 int currentLetter = 0; //currently active signals, adds on 1s and 2s from dits or dahs
 
 
@@ -73,85 +69,58 @@ double avgBtwnLetters = 0;//how many frames between letters?
 /* for sound effects */
 import processing.sound.*;
 SinOsc sine;
-float sinFreq = 900;
-
-boolean activated = false; //for connection to device, must start by lifting pointer finger up for a time limit
-int activationFrames = 0; //how many frames you lifted your finger for
-boolean activating = false;// in the process of activating?
+float sinFreq = 900; //determines pitch. Higher the number, higher the 'note'
 
 void setup(){
-  setupConnection();//to pison device
-  
   size(800,800);
   PFont mono;
   // The font ttf file must be located in the sketch's "data" directory to load successfully
   mono = createFont("RubikMonoOne-Regular.ttf", 32);
   textFont(mono);
-  /* for sound effects, initiate a sin oscillator from the sound library */
+  
+  /* for sound effects, initiate a sin oscillator from the sound library */  
   sine = new SinOsc(this);
-  sine.freq(sinFreq); 
+  sine.freq(sinFreq);
+  
 }
-
-
 void draw(){ 
-  parseData();//from pison device
-  background(0);//start the background off as black
+  background(225,90,70);
+  int currentFrame = frameCount;
   
-  noStroke();
-  fill(225,90,70,activationFrames);
-  rect(0,0,width, height);
+  displayPreviousDots(currentLetter);
+  displayText(currentFrame);
   
-  if(activated){ //if user has lifted finger up for long enough to 'wake' the program
-    background(255,90,70); //the background is a brighter color (given in RGB values out of 255)
-    int currentFrame = frameCount;
-  
-    displayPreviousDots(currentLetter);
-    displayText(currentFrame);
-  
-    if(currentSignalPending){//if we're in a middle of a signal, the sound should play —
-      float elapsedFrames = frameCount - signalStartFrame+1;
-      soundEffect(signalStartFrame, elapsedFrames); // pitch is determined by how long input is (the longer the lower)
-      displayCurrentDot(elapsedFrames);
-    }else{ //otherwise interpret the silence as either time to translate, or time to add a 'space'
-      checkPause(currentFrame);
-    }
+  if(currentSignalPending){//if we're in a middle of a dignal, the sound should play
+    float elapsedFrames = frameCount - signalStartFrame+1;
+    soundEffect(signalStartFrame, elapsedFrames);
+    displayCurrentDot(elapsedFrames);
+  }else{
+    checkPause(currentFrame);
   }
 }
 
-void activation(){
-  activationFrames +=1;
-  activating = true;
-}
-
-//was the time pausing between signals long enough to be considered a space? Can we translate it?
-void checkPause(int currentFrame){ 
+void checkPause(int currentFrame){
   int pauseTime = currentFrame - signalEndFrame;
   String ending = said.substring(said.length()-1);
   boolean endingSpace = ending.contains("_") || ending.contains("*");
-  
-  /*if you paused long enough between signals, and your current combination of signals is a valid letter,
-  then it gets confirmed and we wait for a new set of signals*/
   if (currentLetter > 0 && pauseTime > 60 && translateable(currentLetter)){
         said = said + translateMorse(currentLetter);
         saying = "|";
         currentLetter = 0;
-  }else if( !endingSpace  
+  }
+  else if( !endingSpace  
           && (pauseTime > 360)
           && currentLetter == 0){
       said = said + "_";
       saying = "|";
       currentLetter = 0;
-  }  /* but otherwise if there hasn't already been a space added and you paused long enough, then
-  we assume that the user intended to add a space to the sentence*/
+  }
 }
-
-// Visual effects for the currently not yet translated combination of dits and dahs
 void displayCurrentDot(float elapsedFrames){
   float sizeOfDot = 0.08*width;
      strokeCap(ROUND);
      strokeWeight(sizeOfDot);
      stroke(193, 255, 239);
-     //float lengthOfSignal = pow(elapsedFrames, 1/4)/2;
      float lengthOfSignal = constrain(pow(1.5*(float) Math.cbrt(elapsedFrames-5), 4), 0,width*0.055);
      line(width/2-lengthOfSignal, height/2, width/2+lengthOfSignal,height/2);
 }
@@ -171,7 +140,6 @@ void displayPreviousDots(int signal){
     }
   }
 }
-
 void displayText(int currentFrame){
   fill(255);
   text(said, 20,20,width,height);
@@ -182,16 +150,11 @@ void displayText(int currentFrame){
   }
 }
 void soundEffect(int startFrame, float elapsedFrames){
-  float newFreq = 1/(elapsedFrames/40)*20+500; //formula allows for sound to change from a dit to a dah signal
+  float newFreq = 1/(elapsedFrames/40)*20+500;
   sine.amp(0.8);
   sine.freq(newFreq);
 }
-
-/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-These are the functions that recieve user input 
-(key point is that lifting the finger is the equivalent of pressing down on the mouse, so it's 'reverse' tapping)
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-void fingerUp(){
+void mousePressed(){
   currentSignalPending = true;
   sine.play();
   
@@ -202,8 +165,10 @@ void fingerUp(){
   } else {
     avgBtwnSignals = 0.5*avgBtwnSignals + sinceLastInput; 
   }
+  
+
 }
-void fingerDown(){
+void mouseReleased() {
   sine.stop();
   
   signalEndFrame = frameCount;
@@ -222,46 +187,7 @@ void fingerDown(){
   saying = translateMorse(currentLetter);
 }
 
-void mousePressed(){//equivalent of lifting finger up with the Pison device
-  currentSignalPending = true;
-  sine.play();
-  
-  signalStartFrame = frameCount;
-  int sinceLastInput = signalStartFrame - signalEndFrame;
-  if (avgBtwnSignals == 0) {
-    avgBtwnSignals = sinceLastInput;
-  } else {
-    avgBtwnSignals = 0.5*avgBtwnSignals + sinceLastInput; 
-  }
-}
-
-void mouseReleased() {//equivalwent of relaxing the finger
-  sine.stop();
-  
-  signalEndFrame = frameCount;
-  currentSignalPending = false;
-  
-  int signalElapsed = signalEndFrame - signalStartFrame; 
-  int ditDah = ditOrDah(signalElapsed);
-  
-  if(possibleToContinue(currentLetter)){//if i can add signal to current letter, do so
-    currentLetter = currentLetter*10 + ditDah;
-  }else{//but if not, then translate what we have and start a new one
-    said = said + translateMorse(currentLetter);
-    saying = "|";
-    currentLetter = ditDah;
-  }
-  saying = translateMorse(currentLetter);
-}
-
-
-/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-These are the functions that have to do with translating morse signals. If the signal processing coming from 
-the device can't be improved, then implementing lanugage based probability here could help (much like the methods
-used in autocorrect or android's speed no-lift keyboard)
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-
-Boolean possibleToContinue(int signals){//figures out what the ditdah combo could possibly be..if it is at all
+Boolean possibleToContinue(int signals){//figures out what the ditdwh combo could possibly be..if it is at all
 //if we add more to this combo, does it still have potential as a letter
   if (currentLetter*10 < 2212){
     int digitNum = digitCount(signals);
@@ -276,7 +202,7 @@ Boolean possibleToContinue(int signals){//figures out what the ditdah combo coul
   }
   return false;
 }
-Boolean translateable(int signals){ // is the current combination of dits and dahs a valid letter? 
+Boolean translateable(int signals){
   String temporarySignal = nf(signals,4);
   for(int i = 0; i < Alphabet.length; i++){
     String compareLetter = Alphabet[i];
